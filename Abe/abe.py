@@ -1797,6 +1797,48 @@ class Abe:
                 return 'ERROR: block %d not seen yet' % (height,)
         return format_satoshis(row[0], chain) if row else 0
 
+#    def q_gettop100balances(abe, page, chain):
+#        """gettop100balances"""
+#        if chain is None:
+#                return 'returns top 100 addresses by balance\n' \
+#                        '/chain/CHAIN/q/gettop100balances\n'
+#        sql = """SELECT pubkey_hash FROM pubkey;"""
+#        rows = abe.store.selectall(sql)
+#        version = chain['address_version']
+#        ret = "addr,balance\n"
+#        for row in rows:         
+#                pubkey_hash = row[0]
+#                sql = """          
+#                    SELECT COALESCE(SUM(txout.txout_value), 0)
+#                      FROM pubkey
+#                      JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
+#                      JOIN block_tx ON block_tx.tx_id=txout.tx_id
+#                      JOIN block b ON b.block_id=block_tx.block_id
+#                      JOIN chain_candidate cc ON cc.block_id=b.block_id
+#                      WHERE
+#                          pubkey.pubkey_hash = ? AND
+#                          cc.chain_id = ? AND
+#                          cc.in_longest = 1"""
+#                total_received = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
+#                sql = """
+#                    SELECT COALESCE(SUM(txout.txout_value), 0)
+#                      FROM pubkey
+#                      JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
+#                      JOIN txin ON txin.txout_id=txout.txout_id
+#                      JOIN block_tx ON block_tx.tx_id=txout.tx_id
+#                      JOIN block b ON b.block_id=block_tx.block_id
+#                      JOIN chain_candidate cc ON cc.block_id=b.block_id
+#                      WHERE
+#                          pubkey.pubkey_hash = ? AND
+#                          cc.chain_id = ? AND
+#                          cc.in_longest = 1"""
+#                total_sent = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
+#                final_balance = total_received[0] - total_sent[0]
+#                #hash = str(pubkey_hash).decode('hex')
+#                ret += "%s,%.8f\n" % (util.hash_to_address(version, str(pubkey_hash)), final_balance)
+#                abe.log.info(util.hash_to_address(version, str(pubkey_hash)) + " " + str(final_balance))
+#        return ret
+
     def q_getreceivedbyaddress(abe, page, chain):
         """getreceivedbyaddress"""
         addr = wsgiref.util.shift_path_info(page['env'])
