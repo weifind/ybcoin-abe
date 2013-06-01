@@ -427,7 +427,7 @@ class Abe:
         if hi != count - 1:
             nav[-1] = ['<a href="', basename, '?hi=', str(count - 1),
                         '&amp;count=', str(count), '">', nav[-1], '</a>']
-        for c in (20, 50, 100, 500, 2016):
+        for c in (20, 50, 100, 500, 1440):
             nav += [' ']
             if c != count:
                 nav += ['<a href="', basename, '?count=', str(c)]
