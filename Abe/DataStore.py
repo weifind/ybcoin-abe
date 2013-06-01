@@ -675,7 +675,7 @@ class DataStore(object):
     def _find_no_bit8_chain_ids(store, no_bit8_chains):
         chains = no_bit8_chains
         if chains is None:
-            chains = ["Bitcoin", "Testnet"]
+            chains = ["Yacoin"]
         if isinstance(chains, str):
             chains = [chains]
         ids = set()

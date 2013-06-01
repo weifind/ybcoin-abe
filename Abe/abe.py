@@ -37,7 +37,7 @@ import base58
 
 __version__ = version.__version__
 
-ABE_APPNAME = "Abe"
+ABE_APPNAME = "Yacoin"
 ABE_VERSION = __version__
 ABE_URL = 'https://github.com/saironiq/yacoin-abe'
 
@@ -67,9 +67,10 @@ DEFAULT_TEMPLATE = """
     </h1>
     %(body)s
     <p><a href="%(dotdot)sq">API</a> (machine-readable pages)</p>
+    <p>NEW! => <a href="/graphs.htm">Yacoin Network Graphs</a></p>
     <p style="font-size: smaller">
         <span style="font-style: italic">
-            Powered by <a href="%(ABE_URL)s">%(APPNAME)s</a>
+            Powered by <a href="%(ABE_URL)s">Abe</a>
         </span>
         %(download)s
         Tips appreciated!
@@ -102,7 +103,7 @@ hashesToWin:          expected number of hashes needed to solve a block at this 
 avgIntervalSinceLast: interval seconds divided by blocks
 netHashPerSecond:     estimated network hash rate over interval
 
-Statistical values are approximate and differ slightly from http://blockexplorer.com/q/nethash.
+Statistical values are approximate.
 
 /chain/CHAIN/q/nethash[/INTERVAL[/START[/STOP]]]
 Default INTERVAL=144, START=0, STOP=infinity.
@@ -247,7 +248,7 @@ class Abe:
         return getattr(abe, 'handle_' + cmd, None)
 
     def handle_chains(abe, page):
-        page['title'] = ABE_APPNAME + ' Search'
+        page['title'] = ABE_APPNAME + ' Explorer'
         body = page['body']
         body += [
             abe.search_form(page),
@@ -703,8 +704,8 @@ class Abe:
                    body += ['Generation: ', gen , ' Total']
                    page['h1'] = ['<a href="', page['dotdot'], 'chain/',
                                  escape('Yacoin'), '?hi=', height, '">',
-                                 escape('Yacoin'), '</a> ', height,'<br />','<FONT SIZE="-1">Proof of Work</FONT>',
-                                 '<br />\n','<FONT SIZE="-1">', gen,' Coins generated </FONT>']
+                                 escape('Yacoin'), '</a> ', height,'<br />','<FONT SIZE="-1">Proof of Work; ',
+                                 gen,' Coins generated </FONT>']
             else:
                 for txin in tx['in']:
                     body += hash_to_address_link(
@@ -729,8 +730,8 @@ class Abe:
                body.insert(pos,txt)
                page['h1'] = ['<a href="', page['dotdot'], 'chain/',
                              escape('Yacoin'), '?hi=', height, '">',
-                             escape('Yacoin'), '</a> ', height,'<br />','<FONT COLOR="FF0000"><FONT SIZE="-1">Proof of Stake</FONT></FONT>',
-                             '<br />\n','<FONT SIZE="-1">',posgen, ' Coins generated</FONT>','\n']
+                             escape('Yacoin'), '</a> ', height,'<br />','<FONT COLOR="FF0000"><FONT SIZE="-1">Proof of Stake; </FONT></FONT>',
+                             '<FONT SIZE="-1">',posgen, ' Coins generated</FONT>','\n']
 
         body += '</table>\n'
 
@@ -1681,6 +1682,7 @@ class Abe:
 
     def q_nethash(abe, page, chain):
         """shows statistics about difficulty and network power."""
+	#chain = None
         if chain is None:
             return 'Shows statistics every INTERVAL blocks.\n' \
                 'Negative values count back from the last block.\n' \
@@ -1688,6 +1690,9 @@ class Abe:
         interval = path_info_int(page, 144)
         start = path_info_int(page, 0)
         stop = path_info_int(page, None)
+
+	#if interval < 144:
+	#    return "Sorry, INTERVAL too low."
 
         if stop == 0:
             stop = None
@@ -1797,47 +1802,93 @@ class Abe:
                 return 'ERROR: block %d not seen yet' % (height,)
         return format_satoshis(row[0], chain) if row else 0
 
+    def q_getusedaddrcount(abe, page, chain):
+	"""getusedaddrcount"""
+	if chain is None:
+		return 'returns number of unique addresses used on the network (sending or receiving)\n' \
+			'/chain/CHAIN/q/getusedaddrcount\n'
+	sql = """SELECT COUNT(pubkey.pubkey_id) FROM pubkey"""
+	row = abe.store.selectrow(sql)
+	ret = row[0]
+	return ret
+
+    def q_gettop100receivingaddresses(abe, page, chain):
+	"""gettop100receivingaddresses"""
+	if chain is None:
+		return 'returns top 100 addresses by amount of coins received\n' \
+			'/chan/CHAIN/q/gettop100receivingaddresses\n'
+	sql = """SELECT pubkey_hash, SUM(txout_value) AS SatoshisReceived FROM txout_detail WHERE in_longest=1 AND pubkey_hash IS NOT NULL GROUP BY pubkey_hash ORDER BY SatoshisReceived DESC LIMIT 100;"""
+	rows = abe.store.selectall(sql)
+	version = chain['address_version']
+	ret = "address,received\n"
+	for row in rows:
+		hash, coins = row
+		try:
+			hash = hash.decode('hex')
+			ret += "%s,%.8f\n" % (util.hash_to_address(version, hash), coins/10**6)
+		except:
+			return "ERROR: invalid hash\n"
+	return ret
+
+    def q_gettop100sendingaddresses(abe, page, chain):
+	"""gettop100sendingaddresses"""
+	if chain is None:
+		return 'returns top 100 addresses by amount of coins sent\n' \
+			'/chan/CHAIN/q/gettop100sendingaddresses\n'
+	sql = """SELECT pubkey_hash, SUM(txin_value) AS SatoshisSent FROM txin_detail WHERE in_longest=1 AND prevout_id IS NOT NULL GROUP BY pubkey_hash ORDER BY SatoshisSent DESC LIMIT 100;
+"""
+	rows = abe.store.selectall(sql)
+	version = chain['address_version']
+	ret = "address,sent\n"
+	for row in rows:
+		hash, coins = row
+		try:
+			hash = hash.decode('hex')
+			ret += "%s,%.8f\n" % (util.hash_to_address(version, hash), coins/10**6)
+		except:
+			return "ERROR: invalid hash\n"
+	return ret
+
 #    def q_gettop100balances(abe, page, chain):
-#        """gettop100balances"""
-#        if chain is None:
-#                return 'returns top 100 addresses by balance\n' \
-#                        '/chain/CHAIN/q/gettop100balances\n'
-#        sql = """SELECT pubkey_hash FROM pubkey;"""
-#        rows = abe.store.selectall(sql)
-#        version = chain['address_version']
-#        ret = "addr,balance\n"
-#        for row in rows:         
-#                pubkey_hash = row[0]
-#                sql = """          
-#                    SELECT COALESCE(SUM(txout.txout_value), 0)
-#                      FROM pubkey
-#                      JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
-#                      JOIN block_tx ON block_tx.tx_id=txout.tx_id
-#                      JOIN block b ON b.block_id=block_tx.block_id
-#                      JOIN chain_candidate cc ON cc.block_id=b.block_id
-#                      WHERE
-#                          pubkey.pubkey_hash = ? AND
-#                          cc.chain_id = ? AND
-#                          cc.in_longest = 1"""
-#                total_received = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
-#                sql = """
-#                    SELECT COALESCE(SUM(txout.txout_value), 0)
-#                      FROM pubkey
-#                      JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
-#                      JOIN txin ON txin.txout_id=txout.txout_id
-#                      JOIN block_tx ON block_tx.tx_id=txout.tx_id
-#                      JOIN block b ON b.block_id=block_tx.block_id
-#                      JOIN chain_candidate cc ON cc.block_id=b.block_id
-#                      WHERE
-#                          pubkey.pubkey_hash = ? AND
-#                          cc.chain_id = ? AND
-#                          cc.in_longest = 1"""
-#                total_sent = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
-#                final_balance = total_received[0] - total_sent[0]
-#                #hash = str(pubkey_hash).decode('hex')
-#                ret += "%s,%.8f\n" % (util.hash_to_address(version, str(pubkey_hash)), final_balance)
-#                abe.log.info(util.hash_to_address(version, str(pubkey_hash)) + " " + str(final_balance))
-#        return ret
+#	"""gettop100balances"""
+#	if chain is None:
+#		return 'returns top 100 addresses by balance\n' \
+#			'/chain/CHAIN/q/gettop100balances\n'
+#	sql = """SELECT pubkey_hash FROM pubkey;"""
+#	rows = abe.store.selectall(sql)
+#	version = chain['address_version']
+#	ret = "addr,balance\n"
+#	for row in rows:
+#		pubkey_hash = row[0]
+#		sql = """
+#	            SELECT COALESCE(SUM(txout.txout_value), 0)
+#	              FROM pubkey
+#	              JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
+#	              JOIN block_tx ON block_tx.tx_id=txout.tx_id
+#	              JOIN block b ON b.block_id=block_tx.block_id
+#	              JOIN chain_candidate cc ON cc.block_id=b.block_id
+#	              WHERE
+#	                  pubkey.pubkey_hash = ? AND
+#	                  cc.chain_id = ? AND
+#	                  cc.in_longest = 1"""
+#		total_received = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
+#		sql = """
+#	            SELECT COALESCE(SUM(txout.txout_value), 0)
+#	              FROM pubkey
+#	              JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
+#	              JOIN txin ON txin.txout_id=txout.txout_id
+#	              JOIN block_tx ON block_tx.tx_id=txout.tx_id
+#	              JOIN block b ON b.block_id=block_tx.block_id
+#	              JOIN chain_candidate cc ON cc.block_id=b.block_id
+#	              WHERE
+#	                  pubkey.pubkey_hash = ? AND
+#	                  cc.chain_id = ? AND
+#	                  cc.in_longest = 1"""
+#		total_sent = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
+#		final_balance = total_received[0] - total_sent[0]
+#		#hash = pubkey_hash.decode('hex')
+#		ret += "%s,%.8f\n" % (util.hash_to_address(version, pubkey_hash), final_balance)
+#	return ret
 
     def q_getreceivedbyaddress(abe, page, chain):
         """getreceivedbyaddress"""
