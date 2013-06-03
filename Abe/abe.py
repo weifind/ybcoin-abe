@@ -1680,9 +1680,92 @@ class Abe:
             return 'X5'
         return 'SZ'
 
+    def q_hashrate(abe, page, chain):
+        """shows average network hashrate over last N blocks (in hashes per second, default N=1440 [approx. one day])"""
+        if chain is None:
+            return 'Shows hashrate over N last blocks (in hashes per second, default N=1440 [approx. one day]).\n' \
+                '/chain/CHAIN/q/hashrate[/N]\n'
+        interval = path_info_int(page, 1440)
+        start = 0 - interval
+        stop = None
+
+        if stop == 0:
+            stop = None
+
+        if interval < 0 and start != 0:
+            return 'ERROR: Negative N!'
+
+        if interval < 0 or start < 0 or (stop is not None and stop < 0):
+            count = abe.get_max_block_height(chain)
+            if start < 0:
+                start += count
+            if stop is not None and stop < 0:
+                stop += count
+            if interval < 0:
+                interval = -interval
+                start = count - (count / interval) * interval
+
+        # Select every INTERVAL blocks from START to STOP.
+        # Standard SQL lacks an "every Nth row" feature, so we
+        # provide it with the help of a table containing the integers.
+        # We don't need all integers, only as many as rows we want to
+        # fetch.  We happen to have a table with the desired integers,
+        # namely chain_candidate; its block_height column covers the
+        # required range without duplicates if properly constrained.
+        # That is the story of the second JOIN.
+
+        if stop is not None:
+            stop_ix = (stop - start) / interval
+
+        rows = abe.store.selectall("""
+            SELECT b.block_height,
+                   b.block_nTime,
+                   b.block_chain_work,
+                   b.block_nBits
+              FROM block b
+              JOIN chain_candidate cc ON (cc.block_id = b.block_id)
+              JOIN chain_candidate ints ON (
+                       ints.chain_id = cc.chain_id
+                   AND ints.in_longest = 1
+                   AND ints.block_height * ? + ? = cc.block_height)
+             WHERE cc.in_longest = 1
+               AND cc.chain_id = ?""" + (
+                "" if stop is None else """
+               AND ints.block_height <= ?""") + """
+             ORDER BY cc.block_height""",
+                                   (interval, start, chain['id'])
+                                   if stop is None else
+                                   (interval, start, chain['id'], stop_ix))
+
+        for row in rows:
+            height, nTime, chain_work, nBits = row
+            nTime            = float(nTime)
+            nBits            = int(nBits)
+            target           = util.calculate_target(nBits)
+            difficulty       = util.target_to_difficulty(target)
+            work             = util.target_to_work(target)
+            chain_work       = abe.store.binout_int(chain_work) - work
+
+            if row is not rows[0]:
+                height           = int(height)
+                interval_work    = chain_work - prev_chain_work
+                avg_target       = util.work_to_target(interval_work / interval)
+                #if avg_target == target - 1:
+                #    avg_target = target
+                interval_seconds = nTime - prev_nTime
+                if interval_seconds <= 0:
+                    nethash = 'Infinity'
+                else:
+                    nethash = "%.0f" % (interval_work / interval_seconds,)
+                ret = "%s\n" % (nethash)
+
+            prev_nTime, prev_chain_work = nTime, chain_work
+
+        return ret
+
     def q_nethash(abe, page, chain):
         """shows statistics about difficulty and network power."""
-	#chain = None
+        #chain = None
         if chain is None:
             return 'Shows statistics every INTERVAL blocks.\n' \
                 'Negative values count back from the last block.\n' \
@@ -1691,8 +1774,8 @@ class Abe:
         start = path_info_int(page, 0)
         stop = path_info_int(page, None)
 
-	#if interval < 144:
-	#    return "Sorry, INTERVAL too low."
+        #if interval < 144:
+        #    return "Sorry, INTERVAL too low."
 
         if stop == 0:
             stop = None
