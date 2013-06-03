@@ -1890,6 +1890,50 @@ class Abe:
 #		ret += "%s,%.8f\n" % (util.hash_to_address(version, pubkey_hash), final_balance)
 #	return ret
 
+    def q_getbalance(abe, page, chain):
+        """getbalance"""
+        addr = wsgiref.util.shift_path_info(page['env'])
+        if chain is None or addr is None:
+            return 'returns balance of an address\n' \
+                '/chain/CHAIN/q/getbalance/ADDRESS\n'
+
+        if not util.possible_address(addr):
+            return 'ERROR: address invalid'
+
+        version, hash = util.decode_address(addr)
+        sql = """
+            SELECT COALESCE(SUM(txout.txout_value), 0)
+              FROM pubkey
+              JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
+              JOIN block_tx ON block_tx.tx_id=txout.tx_id
+              JOIN block b ON b.block_id=block_tx.block_id
+              JOIN chain_candidate cc ON cc.block_id=b.block_id
+              WHERE
+                  pubkey.pubkey_hash = ? AND
+                  cc.chain_id = ? AND
+                  cc.in_longest = 1"""
+        row = abe.store.selectrow(
+            sql, (abe.store.binin(hash), chain['id']))
+        ret = float(format_satoshis(row[0], chain));
+
+        sql = """
+            SELECT COALESCE(SUM(txout.txout_value), 0)
+              FROM pubkey
+              JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
+              JOIN txin ON txin.txout_id=txout.txout_id
+              JOIN block_tx ON block_tx.tx_id=txout.tx_id
+              JOIN block b ON b.block_id=block_tx.block_id
+              JOIN chain_candidate cc ON cc.block_id=b.block_id
+              WHERE
+                  pubkey.pubkey_hash = ? AND
+                  cc.chain_id = ? AND
+                  cc.in_longest = 1"""
+        row = abe.store.selectrow(
+            sql, (abe.store.binin(hash), chain['id']))
+        ret -= float(format_satoshis(row[0], chain));
+
+        return str(ret)
+
     def q_getreceivedbyaddress(abe, page, chain):
         """getreceivedbyaddress"""
         addr = wsgiref.util.shift_path_info(page['env'])
