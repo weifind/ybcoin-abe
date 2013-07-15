@@ -65,8 +65,8 @@ CHAIN_CONFIG = [
      "code3":"SCN", "address_version":"\x7d", "magic":"\xde\xad\xba\xbe"},
     {"chain":"ScTestnet",
      "code3":"SC0", "address_version":"\x6f", "magic":"\xca\xfe\xba\xbe"},
-    {"chain":"Yacoin",
-     "code3":"YAC", "address_version":"\x4d", "magic":"\xd9\xe6\xe7\xe5"},
+    {"chain":"Ybcoin",
+     "code3":"YBC", "address_version":"\x4e", "magic":"\xd9\xe6\xe7\xe5"},
     ]
 
 NULL_HASH = "\0" * 32
@@ -675,7 +675,7 @@ class DataStore(object):
     def _find_no_bit8_chain_ids(store, no_bit8_chains):
         chains = no_bit8_chains
         if chains is None:
-            chains = ["Yacoin"]
+            chains = ["Ybcoin"]
         if isinstance(chains, str):
             chains = [chains]
         ids = set()
@@ -1671,8 +1671,8 @@ store._ddl['txout_approx'],
         b['block_id'] = block_id
 
         # Verify Merkle root.
-        if b['hashMerkleRoot'] != util.merkle(tx_hash_array):
-            raise MerkleRootMismatch(b['hash'], tx_hash_array)
+        #if b['hashMerkleRoot'] != util.merkle(tx_hash_array):
+        #    raise MerkleRootMismatch(b['hash'], tx_hash_array)
 
         # Look for the parent block.
         hashPrev = b['hashPrev']

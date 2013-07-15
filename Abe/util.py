@@ -5,7 +5,7 @@
 import re
 import base58
 import Crypto.Hash.SHA256 as SHA256
-from yac_scrypt import getPoWHash
+from ybc_scrypt import getPoWHash
 
 try:
     import Crypto.Hash.RIPEMD160 as RIPEMD160
