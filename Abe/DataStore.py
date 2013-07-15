@@ -66,7 +66,7 @@ CHAIN_CONFIG = [
     {"chain":"ScTestnet",
      "code3":"SC0", "address_version":"\x6f", "magic":"\xca\xfe\xba\xbe"},
     {"chain":"Ybcoin",
-     "code3":"YBC", "address_version":"\x4e", "magic":"\xd9\xe6\xe7\xe5"},
+     "code3":"YBC", "address_version":"\x4e", "magic":"\xd4\xe7\xe8\xe5"},
     ]
 
 NULL_HASH = "\0" * 32
