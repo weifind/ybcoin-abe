@@ -51,20 +51,20 @@ CONFIG_DEFAULTS = {
 WORK_BITS = 304  # XXX more than necessary.
 
 CHAIN_CONFIG = [
-    {"chain":"Bitcoin",
-     "code3":"BTC", "address_version":"\x00", "magic":"\xf9\xbe\xb4\xd9"},
-    {"chain":"Testnet",
-     "code3":"BC0", "address_version":"\x6f", "magic":"\xfa\xbf\xb5\xda"},
-    {"chain":"Namecoin",
-     "code3":"NMC", "address_version":"\x34", "magic":"\xf9\xbe\xb4\xfe"},
-    {"chain":"Weeds", "network":"Weedsnet",
-     "code3":"WDS", "address_version":"\xf3", "magic":"\xf8\xbf\xb5\xda"},
-    {"chain":"BeerTokens",
-     "code3":"BER", "address_version":"\xf2", "magic":"\xf7\xbf\xb5\xdb"},
-    {"chain":"SolidCoin",
-     "code3":"SCN", "address_version":"\x7d", "magic":"\xde\xad\xba\xbe"},
-    {"chain":"ScTestnet",
-     "code3":"SC0", "address_version":"\x6f", "magic":"\xca\xfe\xba\xbe"},
+    #{"chain":"Bitcoin",
+    # "code3":"BTC", "address_version":"\x00", "magic":"\xf9\xbe\xb4\xd9"},
+    #{"chain":"Testnet",
+    # "code3":"BC0", "address_version":"\x6f", "magic":"\xfa\xbf\xb5\xda"},
+    #{"chain":"Namecoin",
+    # "code3":"NMC", "address_version":"\x34", "magic":"\xf9\xbe\xb4\xfe"},
+    #{"chain":"Weeds", "network":"Weedsnet",
+    # "code3":"WDS", "address_version":"\xf3", "magic":"\xf8\xbf\xb5\xda"},
+    #{"chain":"BeerTokens",
+    # "code3":"BER", "address_version":"\xf2", "magic":"\xf7\xbf\xb5\xdb"},
+    #{"chain":"SolidCoin",
+    # "code3":"SCN", "address_version":"\x7d", "magic":"\xde\xad\xba\xbe"},
+    #{"chain":"ScTestnet",
+    # "code3":"SC0", "address_version":"\x6f", "magic":"\xca\xfe\xba\xbe"},
     {"chain":"Ybcoin",
      "code3":"YBC", "address_version":"\x4e", "magic":"\xd4\xe7\xe8\xe5"},
     ]
@@ -101,7 +101,7 @@ class MerkleRootMismatch(InvalidBlock):
         ex.tx_hashes = tx_hashes
     def __str__(ex):
         return 'Block header Merkle root does not match its transactions. ' \
-            'block hash=%s' % (ex.block_hash.encode('hex'),)
+            'block hash=%s' % (ex.block_hash.encode('hex'))
 
 class DataStore(object):
 
@@ -141,6 +141,7 @@ class DataStore(object):
             store.sqllog.setLevel(logging.ERROR)
         store.module = __import__(args.dbtype)
         store.conn = store.connect()
+	store.conn.ping(True);
         store.cursor = store.conn.cursor()
         store._blocks = {}
 
@@ -1633,7 +1634,7 @@ store._ddl['txout_approx'],
     def import_block(store, b, chain_ids=frozenset()):
 
         # Import new transactions.
-        b['value_in'] = 0
+        b['value_in'] = None
         b['value_out'] = 0
         b['value_destroyed'] = 0
         tx_hash_array = []
@@ -1660,10 +1661,13 @@ store._ddl['txout_approx'],
                     all_txins_linked = False
 
             if tx['value_in'] is None:
-                b['value_in'] = None
-            elif b['value_in'] is not None:
+                #b['value_in'] = None 
+                print("""transaction's value in is null,block id: %d,value_out: %d, value_des: %d """ % (int(store.new_id("block")),b['value_out'],b['value_destroyed']))
+            #elif b['value_in'] is not None:
+            else:
+                b['value_in'] = b['value_in'] or 0;
                 b['value_in'] += tx['value_in']
-            b['value_out'] += tx['value_out']
+                b['value_out'] += tx['value_out']
             b['value_destroyed'] += tx['value_destroyed']
 
         # Get a new block ID.
@@ -1671,7 +1675,7 @@ store._ddl['txout_approx'],
         b['block_id'] = block_id
 
         # Verify Merkle root.
-        #if b['hashMerkleRoot'] != util.merkle(tx_hash_array):
+        #if b['hashMerkleRoot'] != util.merkle(tx_hash_array):            
         #    raise MerkleRootMismatch(b['hash'], tx_hash_array)
 
         # Look for the parent block.
@@ -1692,10 +1696,10 @@ store._ddl['txout_approx'],
         else:
             b['seconds'] = prev_seconds + b['nTime'] - prev_nTime
         if prev_satoshis is None or prev_satoshis < 0 or b['value_in'] is None:
-            # XXX Abuse this field to save work in adopt_orphans.
-            b['satoshis'] = -1 - b['value_destroyed']
+            # XXX Abuse this field to save work in adopt_orphans.            
+            b['satoshis'] = prev_satoshis #-1 - b['value_destroyed']  
         else:
-            b['satoshis'] = prev_satoshis + b['value_out'] - b['value_in'] \
+            b['satoshis'] = prev_satoshis + b['value_out'] - (b['value_in'] or 0) \
                 - b['value_destroyed']
 
         if prev_satoshis is None or prev_satoshis < 0:
@@ -2302,7 +2306,7 @@ store._ddl['txout_approx'],
             store.sql("""
                 UPDATE chain
                    SET chain_last_block_id = ?
-                 WHERE chain_id = ?""", (top['block_id'], chain_id))
+                 WHERE chain_id = ?""", (b['block_id'], chain_id))
 
         if store.use_firstbits and b['height'] is not None:
             (addr_vers,) = store.selectrow("""
@@ -2629,15 +2633,16 @@ store._ddl['txout_approx'],
         nTransactions = ds.read_compact_size()
         for i in xrange(nTransactions):
             d['transactions'].append(deserialize.parse_Transaction(ds))
+        d['blockSig'] = ds.read_bytes(ds.read_compact_size())
         return d
 
     def blkfile_name(store, dircfg, number=None):
         if number is None:
             number = dircfg['blkfile_number']
         if number > 9999:
-            return os.path.join(dircfg['dirname'], "blocks", "blk%05d.dat"
+            return os.path.join(dircfg['dirname'], "blocks", "blk-v1-%05d.dat"
                                 % (number - 100000,))
-        return os.path.join(dircfg['dirname'], "blk%04d.dat" % (number,))
+        return os.path.join(dircfg['dirname'], "blk-v1-%04d.dat" % (number,))
 
     def save_blkfile_offset(store, dircfg, offset):
         store.sql("""

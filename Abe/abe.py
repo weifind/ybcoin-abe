@@ -41,21 +41,23 @@ ABE_APPNAME = "Ybcoin"
 ABE_VERSION = __version__
 ABE_URL = 'https://github.com/ybcoin/ybcoin-abe'
 
-COPYRIGHT_YEARS = '2013'
-COPYRIGHT = "Sen"
-COPYRIGHT_URL = "mailto:ybcoin@gmail.com"
+COPYRIGHT_YEARS = '2014'
+COPYRIGHT = "Ybcoin"
+COPYRIGHT_URL = "mailto:ifind@live.cn"
 
 DONATIONS_BTC = ''
-DONATIONS_YBC = 'YkjQUvyPf415sSjEdUZxb5UYccJcjcxZ7W'
+DONATIONS_YBC = 'YTU8JJidCcHtJpYMGPK2eL6zGBVKwd2Jit'
 
 # Abe-generated content should all be valid HTML and XHTML fragments.
 # Configurable templates may contain either.  HTML seems better supported
 # under Internet Explorer.
+# <p><a href="/static/graphs.htm">Ybcoin 统计数据</a></p>
 DEFAULT_CONTENT_TYPE = "text/html; charset=utf-8"
 DEFAULT_TEMPLATE = """
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
+    <meta charset="UTF-8">
     <link rel="stylesheet" type="text/css"
      href="%(dotdot)s%(STATIC_PATH)sabe.css" />
     <link rel="shortcut icon" href="%(dotdot)s%(STATIC_PATH)sfavicon.ico" />
@@ -66,16 +68,16 @@ DEFAULT_TEMPLATE = """
      src="%(dotdot)s%(STATIC_PATH)slogo32.png" alt="Abe logo" /></a> %(h1)s
     </h1>
     %(body)s
-    <p><a href="%(dotdot)sq">API</a> (machine-readable pages)</p>
-    <p>NEW! => <a href="/graphs.htm">Ybcoin Network Graphs</a></p>
+    <p><a href="%(dotdot)sq">API</a> 机读格式</p>
     <p style="font-size: smaller">
         <span style="font-style: italic">
-            Powered by <a href="%(ABE_URL)s">Abe</a>
+            由 <a href="%(ABE_URL)s">Ybcoin-abe</a> 提供技术支持
         </span>
         %(download)s
-        Tips appreciated!
-        <a href="%(dotdot)saddress/%(DONATIONS_BTC)s">BTC</a>
+        , 需要您的捐助
+        <!-- <a href="%(dotdot)saddress/%(DONATIONS_BTC)s">BTC</a> -->
         <a href="%(dotdot)saddress/%(DONATIONS_YBC)s">YBC</a>
+    	<script src="http://s11.cnzz.com/stat.php?id=5570768&web_id=5570768&show=pic1" language="JavaScript"></script>
     </p>
 </body>
 </html>
@@ -153,7 +155,7 @@ class Abe:
                 abe.template_vars.get('download', ''))
         abe.base_url = args.base_url
         abe.address_history_rows_max = int(
-            args.address_history_rows_max or 1000)
+            args.address_history_rows_max or 100000)
 
         if args.shortlink_type is None:
             abe.shortlink_type = ("firstbits" if store.use_firstbits else
@@ -196,8 +198,7 @@ class Abe:
         cmd = wsgiref.util.shift_path_info(env)
         if cmd == '':
             cmd = abe.home
-        handler = abe.get_handler(cmd)
-
+        handler = abe.get_handler(cmd)        
         try:
             if handler is None:
                 return abe.serve_static(cmd + env['PATH_INFO'], start_response)
@@ -253,16 +254,16 @@ class Abe:
         body += [
             abe.search_form(page),
             '<table>\n',
-            '<tr><th>Currency</th><th>Code</th><th>Block</th><th>Time</th>',
-            '<th>Started</th><th>Age (days)</th><th>Coins Created</th>',
-            '<th>Avg Coin Age</th><th>',
+            '<tr><th>货币</th><th>代号</th><th>区块</th><th>时间(GMT)</th>',
+            '<th>开始时间</th><th>币龄</th><th>已发行</th>',
+            '<th>平均币龄</th><th>',
             '% <a href="https://en.bitcoin.it/wiki/Bitcoin_Days_Destroyed">',
             'CoinDD</a></th>',
             '</tr>\n']
         now = time.time()
 
         rows = abe.store.selectall("""
-            SELECT c.chain_name, b.block_height, b.block_nTime, b.block_hash,
+            SELECT c.chain_name, b.block_height, (b.block_nTime+28800), b.block_hash,
                    b.block_total_seconds, b.block_total_satoshis,
                    b.block_satoshi_seconds,
                    b.block_total_ss, c.chain_id, c.chain_code3,
@@ -286,34 +287,35 @@ class Abe:
                     '<td><a href="block/', hash, '">', height, '</a></td>',
                     '<td>', format_time(nTime), '</td>']
 
-                if row[6] is not None and row[7] is not None:
-                    (seconds, satoshis, ss, total_ss) = (
-                        int(row[4]), int(row[5]), int(row[6]), int(row[7]))
+                #if row[6] is not None and row[7] is not None:
+                (seconds, satoshis, ss, total_ss) = (
+                    int(row[4]), int(row[5]), int(row[6] or 0), int(row[7] or 0))
 
-                    started = nTime - seconds
-                    chain_age = now - started
-                    since_block = now - nTime
+                started = nTime - seconds
+                chain_age = now - started
+                since_block = now - nTime
 
-                    if satoshis == 0:
-                        avg_age = '&nbsp;'
-                    else:
-                        avg_age = '%5g' % ((float(ss) / satoshis + since_block)
-                                           / 86400.0)
+                if satoshis == 0 or satoshis == -1:
+                    avg_age = '&nbsp;'
+                    satoshis = 0;
+                else:
+                    avg_age = '%5g' % ((float(ss) / satoshis + since_block)
+                                       / 86400.0)
 
-                    if chain_age <= 0:
-                        percent_destroyed = '&nbsp;'
-                    else:
-                        more = since_block * satoshis
-                        percent_destroyed = '%5g' % (
-                            100.0 - (100.0 * (ss + more) / (total_ss + more)))
-                        percent_destroyed += '%'
+                if chain_age <= 0 or total_ss <= 0:
+                    percent_destroyed = '&nbsp;'
+                else:
+                    more = since_block * satoshis
+                    percent_destroyed = '%5g' % (
+                        100.0 - (100.0 * (ss + more) / (total_ss + more)))
+                    percent_destroyed += '%'
 
-                    body += [
-                        '<td>', format_time(started)[:10], '</td>',
-                        '<td>', '%5g' % (chain_age / 86400.0), '</td>',
-                        '<td>', format_satoshis(satoshis, chain), '</td>',
-                        '<td>', avg_age, '</td>',
-                        '<td>', percent_destroyed, '</td>']
+                body += [
+                    '<td>', format_time(started)[:10], '</td>',
+                    '<td>', '%5g' % (chain_age / 86400.0), '</td>',
+                    '<td>', format_satoshis(satoshis, chain), '</td>',
+                    '<td>', avg_age, '</td>',
+                    '<td>', percent_destroyed, '</td>']
 
             body += ['</tr>\n']
         body += ['</table>\n']
@@ -398,7 +400,7 @@ class Abe:
             return
 
         rows = abe.store.selectall("""
-            SELECT b.block_hash, b.block_height, b.block_nTime, b.block_num_tx,
+            SELECT b.block_hash, b.block_height, (b.block_nTime+28800), b.block_num_tx,
                    b.block_nBits, b.block_value_out,
                    b.block_total_seconds, b.block_satoshi_seconds,
                    b.block_total_satoshis, b.block_ss_destroyed,
@@ -438,15 +440,15 @@ class Abe:
             if c != count:
                 nav += ['</a>']
 
-        nav += [' <a href="', page['dotdot'], '">Search</a>']
+        nav += [' <a href="', page['dotdot'], '">搜索</a>']
 
         extra = False
         #extra = True
         body += ['<p>', nav, '</p>\n',
-                 '<table><tr><th>Block</th><th>Approx. Time</th>',
-                 '<th>Transactions</th><th>Value Out</th>',
-                 '<th>Difficulty</th><th>Outstanding</th>',
-                 '<th>Average Age</th><th>Chain Age</th>',
+                 '<table><tr><th>区块</th><th>大约生成时间</th>',
+                 '<th>交易数</th><th>输出值</th>',
+                 '<th>难度</th><th>已发行</th>',
+                 '<th>平均币龄</th><th>币龄</th>',
                  '<th>% ',
                  '<a href="https://en.bitcoin.it/wiki/Bitcoin_Days_Destroyed">',
                  'CoinDD</a></th>',
@@ -460,9 +462,9 @@ class Abe:
             nTime = int(nTime)
             value_out = int(value_out)
             seconds = int(seconds)
-            satoshis = int(satoshis)
-            ss = int(ss)
-            total_ss = int(total_ss)
+            satoshis = int(satoshis or 0)
+            ss = int(ss or 0)
+            total_ss = int(total_ss or 0)
 
             if satoshis == 0:
                 avg_age = '&nbsp;'
@@ -506,7 +508,7 @@ class Abe:
                 block_hash,
                 block_version,
                 block_hashMerkleRoot,
-                block_nTime,
+                (block_nTime+28800),
                 block_nBits,
                 block_nNonce,
                 block_height,
@@ -559,42 +561,42 @@ class Abe:
                           escape(chain['name']), '?hi=', height, '">',
                           escape(chain['name']), '</a> ', height]
 
-        body += abe.short_link(page, 'b/' + block_shortlink(block_hash))
+        #body += abe.short_link(page, 'b/' + block_shortlink(block_hash))
 
         body += ['<p>Hash: ', block_hash, '<br />\n']
 
         if prev_block_hash is not None:
-            body += ['Previous Block: <a href="', dotdotblock,
+            body += ['前一个区块: <a href="', dotdotblock,
                      prev_block_hash, '">', prev_block_hash, '</a><br />\n']
         if next_list:
-            body += ['Next Block: ']
+            body += ['后一个区块: ']
         for row in next_list:
             hash = abe.store.hashout_hex(row[0])
             body += ['<a href="', dotdotblock, hash, '">', hash, '</a><br />\n']
 
         body += [
-            'Height: ', height, '<br />\n',
-            'Version: ', block_version, '<br />\n',
-            'Transaction Merkle Root: ', hashMerkleRoot, '<br />\n',
-            'Time: ', nTime, ' (', format_time(nTime), ')<br />\n',
-            'Difficulty: ', format_difficulty(util.calculate_difficulty(nBits)),
+            '高度: ', height, '<br />\n',
+            '版本: ', block_version, '<br />\n',
+            '交易 Merkle Root: ', hashMerkleRoot, '<br />\n',
+            '时间: ', nTime, ' (', format_time(nTime), ')<br />\n',
+            '难度: ', format_difficulty(util.calculate_difficulty(nBits)),
             ' (Bits: %x)' % (nBits,), '<br />\n',
-            'Cumulative Difficulty: ', format_difficulty(
+            '累计难度: ', format_difficulty(
                 util.work_to_difficulty(block_chain_work)), '<br />\n',
             'Nonce: ', nNonce, '<br />\n',
-            'Transactions: ', num_tx, '<br />\n',
-            'Value out: ', format_satoshis(value_out, chain), '<br />\n',
+            '交易: ', num_tx, '<br />\n',
+            '输出值: ', format_satoshis(value_out, chain), '<br />\n',
 
-            ['Average Coin Age: %6g' % (ss / 86400.0 / satoshis,),
-             ' days<br />\n']
+            ['平均币龄: %6g' % (ss / 86400.0 / satoshis,),
+             ' 天<br />\n']
             if satoshis and (ss is not None) else '',
 
             '' if destroyed is None else
             ['Coin-days Destroyed: ',
              format_satoshis(destroyed / 86400.0, chain), '<br />\n'],
 
-            ['Cumulative Coin-days Destroyed: %6g%%<br />\n' %
-             (100 * (1 - float(ss) / total_ss),)]
+            ['累计 Coin-days Destroyed: %6g%%<br />\n' %
+             (100 * (1 - float(ss or 0) / total_ss),)]
             if total_ss else '',
 
             ['sat=',satoshis,';sec=',seconds,';ss=',ss,
@@ -603,7 +605,7 @@ class Abe:
 
             '</p>\n']
 
-        body += ['<h3>Transactions</h3>\n']
+        body += ['<h3>交易</h3>\n']
 
         tx_ids = []
         txs = {}
@@ -668,8 +670,8 @@ class Abe:
                     "pubkey_hash": pubkey_hash,
                     })
 
-        body += ['<table><tr><th>Transaction</th><th>Fee</th>'
-                 '<th>Size (kB)</th><th>From (amount)</th><th>To (amount)</th>'
+        body += ['<table><tr><th>交易</th><th>税</th>'
+                 '<th>大小 (kB)</th><th>从 (数量)</th><th>到 (数量)</th>'
                  '</tr>\n']
 
         txnum = 0
@@ -704,8 +706,8 @@ class Abe:
                    body += ['Generation: ', gen , ' Total']
                    page['h1'] = ['<a href="', page['dotdot'], 'chain/',
                                  escape('Ybcoin'), '?hi=', height, '">',
-                                 escape('Ybcoin'), '</a> ', height,'<br />','<FONT SIZE="-1">Proof of Work; ',
-                                 gen,' Coins generated </FONT>']
+                                 escape('Ybcoin'), '</a> ', height,'<br />','<FONT SIZE="-1">Proof of Work; 生成',
+                                 gen,' 个币 </FONT>']
             else:
                 for txin in tx['in']:
                     body += hash_to_address_link(
@@ -731,7 +733,7 @@ class Abe:
                page['h1'] = ['<a href="', page['dotdot'], 'chain/',
                              escape('Ybcoin'), '?hi=', height, '">',
                              escape('Ybcoin'), '</a> ', height,'<br />','<FONT COLOR="FF0000"><FONT SIZE="-1">Proof of Stake; </FONT></FONT>',
-                             '<FONT SIZE="-1">',posgen, ' Coins generated</FONT>','\n']
+                             '<FONT SIZE="-1">生成 ',posgen, ' 个币</FONT>','\n']
 
         body += '</table>\n'
 
@@ -741,7 +743,7 @@ class Abe:
             raise PageNotFound()
 
         block_hash = block_hash.lower()  # Case-insensitive, BBE compatible
-        page['title'] = 'Block'
+        page['title'] = '区块'
 
         if not is_hash_prefix(block_hash):
             page['body'] += ['<p class="error">Not a valid block hash.</p>']
@@ -775,7 +777,7 @@ class Abe:
             raise PageNotFound()
 
         tx_hash = tx_hash.lower()  # Case-insensitive, BBE compatible
-        page['title'] = ['Transaction ', tx_hash[:10], '...', tx_hash[-4:]]
+        page['title'] = ['交易 ', tx_hash[:10], '...', tx_hash[-4:]]
         body = page['body']
 
         if not is_hash_prefix(tx_hash):
@@ -795,7 +797,7 @@ class Abe:
 
         block_rows = abe.store.selectall("""
             SELECT c.chain_name, cc.in_longest,
-                   b.block_nTime, b.block_height, b.block_hash,
+                   (b.block_nTime+28800), b.block_height, b.block_hash,
                    block_tx.tx_pos
               FROM chain c
               JOIN chain_candidate cc ON (cc.chain_id = c.chain_id)
@@ -905,7 +907,7 @@ class Abe:
                 abe.log.warn('Transaction ' + tx_hash + ' in multiple chains: '
                              + name + ', ' + chain['name'])
             body += [
-                'Appeared in <a href="../block/', blk_hash, '">',
+                '出现在 <a href="../block/', blk_hash, '">',
                 escape(name), ' ',
                 height if in_longest else [blk_hash[:10], '...', blk_hash[-4:]],
                 '</a> (', format_time(nTime), ')<br />\n']
@@ -915,22 +917,22 @@ class Abe:
             chain = abe.get_default_chain()
 
         body += [
-            'Number of inputs: ', len(in_rows),
-            ' (<a href="#inputs">Jump to inputs</a>)<br />\n',
-            'Total in: ', format_satoshis(value_in, chain), '<br />\n',
-            'Number of outputs: ', len(out_rows),
-            ' (<a href="#outputs">Jump to outputs</a>)<br />\n',
-            'Total out: ', format_satoshis(value_out, chain), '<br />\n',
-            'Size: ', tx_size, ' bytes<br />\n',
-            'Fee: ', format_satoshis(0 if is_coinbase else
+            '输入数量: ', len(in_rows),
+            ' (<a href="#inputs">跳转到输入</a>)<br />\n',
+            '输入总量: ', format_satoshis(value_in, chain), '<br />\n',
+            '输出数量: ', len(out_rows),
+            ' (<a href="#outputs">跳转到输出</a>)<br />\n',
+            '输出总量: ', format_satoshis(value_out, chain), '<br />\n',
+            '大小: ', tx_size, ' bytes<br />\n',
+            '税费: ', format_satoshis(0 if is_coinbase else
                                      (value_in and value_out and
                                       value_in - value_out), chain),
             '<br />\n',
-            '<a href="../rawtx/', tx_hash, '">Raw transaction</a><br />\n']
+            '<a href="../rawtx/', tx_hash, '">交易原始数据</a><br />\n']
         body += ['</p>\n',
-                 '<a name="inputs"><h3>Inputs</h3></a>\n<table>\n',
-                 '<tr><th>Index</th><th>Previous output</th><th>Amount</th>',
-                 '<th>From address</th>']
+                 '<a name="inputs"><h3>输入</h3></a>\n<table>\n',
+                 '<tr><th>序号</th><th>前一个输出</th><th>数量</th>',
+                 '<th>从</th>']
         if abe.store.keep_scriptsig:
             body += ['<th>ScriptSig</th>']
         body += ['</tr>\n']
@@ -938,9 +940,9 @@ class Abe:
             row_to_html(row, 'i', 'o',
                         'Generation' if is_coinbase else 'Unknown')
         body += ['</table>\n',
-                 '<a name="outputs"><h3>Outputs</h3></a>\n<table>\n',
-                 '<tr><th>Index</th><th>Redeemed at input</th><th>Amount</th>',
-                 '<th>To address</th><th>ScriptPubKey</th></tr>\n']
+                 '<a name="outputs"><h3>输出</h3></a>\n<table>\n',
+                 '<tr><th>序号</th><th>消费的输入</th><th>数量</th>',
+                 '<th>到</th><th>ScriptPubKey</th></tr>\n']
         for row in out_rows:
             row_to_html(row, 'o', 'i', 'Not yet redeemed')
 
@@ -1000,7 +1002,7 @@ class Abe:
         max_rows = abe.address_history_rows_max
         in_rows = abe.store.selectall("""
             SELECT
-                b.block_nTime,
+                (b.block_nTime+28800),
                 cc.chain_id,
                 b.block_height,
                 1,
@@ -1029,7 +1031,7 @@ class Abe:
         if not too_many:
             out_rows = abe.store.selectall("""
                 SELECT
-                    b.block_nTime,
+                    (b.block_nTime+28800),
                     cc.chain_id,
                     b.block_height,
                     0,
@@ -1109,22 +1111,22 @@ class Abe:
             link = address[0 : abe.shortlink_type]
         body += abe.short_link(page, 'a/' + link)
 
-        body += ['<p>Balance: '] + format_amounts(balance, True)
+        body += ['<p>余额: '] + format_amounts(balance, True)
 
         for chain_id in chain_ids:
             balance[chain_id] = 0  # Reset for history traversal.
 
         body += ['<br />\n',
-                 'Transactions in: ', count[0], '<br />\n',
-                 'Received: ', format_amounts(received, False), '<br />\n',
-                 'Transactions out: ', count[1], '<br />\n',
-                 'Sent: ', format_amounts(sent, False), '<br />\n']
+                 '交易: ', count[0], '<br />\n',
+                 '收到: ', format_amounts(received, False), '<br />\n',
+                 '交易输出: ', count[1], '<br />\n',
+                 '发出: ', format_amounts(sent, False), '<br />\n']
 
         body += ['</p>\n'
-                 '<h3>Transactions</h3>\n'
-                 '<table>\n<tr><th>Transaction</th><th>Block</th>'
-                 '<th>Approx. Time</th><th>Amount</th><th>Balance</th>'
-                 '<th>Currency</th></tr>\n']
+                 '<h3>交易</h3>\n'
+                 '<table>\n<tr><th>交易</th><th>区块</th>'
+                 '<th>大约生成时间</th><th>数量</th><th>余额</th>'
+                 '<th>货币</th></tr>\n']
 
         for elt in txpoints:
             chain = chains[elt['chain_id']]
@@ -1148,20 +1150,19 @@ class Abe:
     def search_form(abe, page):
         q = (page['params'].get('q') or [''])[0]
         return [
-            '<p>Search by address, block number or hash, transaction or'
-            ' public key hash, or chain name:</p>\n'
+            '<p>输入地址、区块序号或hash、交易ID或公钥hash、币种进行搜索:</p>\n'
             '<form action="', page['dotdot'], 'search"><p>\n'
             '<input name="q" size="64" value="', escape(q), '" />'
-            '<button type="submit">Search</button>\n'
-            '<br />Address or hash search requires at least the first ',
-            HASH_PREFIX_MIN, ' characters.</p></form>\n']
+            '<button type="submit">搜索</button>\n'
+            '<br />地址或者hash值至少包含前 ',
+            HASH_PREFIX_MIN, ' 个字符</p></form>\n']
 
     def handle_search(abe, page):
         page['title'] = 'Search'
         q = (page['params'].get('q') or [''])[0]
         if q == '':
             page['body'] = [
-                '<p>Please enter search terms.</p>\n', abe.search_form(page)]
+                '<p>请输入查询内容</p>\n', abe.search_form(page)]
             return
 
         found = []
@@ -1324,8 +1325,8 @@ class Abe:
         return ret
 
     def search_general(abe, q):
-        """Search for something that is not an address, hash, or block number.
-        Currently, this is limited to chain names and currency codes."""
+        """搜索非地址、hash或区块id的内容.
+        现在仅限于 chain 名称和货币代号"""
         def process(row):
             (name, code3) = row
             return { 'name': name + ' (' + code3 + ')',
@@ -1542,7 +1543,7 @@ class Abe:
         abe.do_raw(page, func(page, page['chain']))
 
     def q(abe, page):
-        page['body'] = ['<p>Supported APIs:</p>\n<ul>\n']
+        page['body'] = ['<p>支持的 APIs:</p>\n<ul>\n']
         for name in dir(abe):
             if not name.startswith("q_"):
                 continue
@@ -1560,25 +1561,25 @@ class Abe:
         return abe.store.get_block_number(chain['id'])
 
     def q_getblockcount(abe, page, chain):
-        """shows the current block number."""
+        """显示当前区块数量"""
         if chain is None:
-            return 'Shows the greatest block height in CHAIN.\n' \
+            return '显示 CHAIN 当前区块数量.\n' \
                 '/chain/CHAIN/q/getblockcount\n'
         return abe.get_max_block_height(chain)
 
     def q_getdifficulty(abe, page, chain):
-        """shows the current difficulty."""
+        """显示当前难度"""
         if chain is None:
-            return 'Shows the difficulty of the last block in CHAIN.\n' \
+            return '显示 CHAIN 最新区块难度.\n' \
                 '/chain/CHAIN/q/getdifficulty\n'
         target = abe.store.get_target(chain['id'])
         return "" if target is None else util.target_to_difficulty(target)
 
     def q_translate_address(abe, page, chain):
-        """shows the address in a given chain with a given address's hash."""
+        """将地址hash转换为地址."""
         addr = wsgiref.util.shift_path_info(page['env'])
         if chain is None or addr is None:
-            return 'Translates ADDRESS for use in CHAIN.\n' \
+            return '转换 CHAIN 地址.\n' \
                 '/chain/CHAIN/q/translate_address/ADDRESS\n'
         version, hash = util.decode_check_address(addr)
         if hash is None:
@@ -1586,11 +1587,10 @@ class Abe:
         return util.hash_to_address(chain['address_version'], hash)
 
     def q_decode_address(abe, page, chain):
-        """shows the version prefix and hash encoded in an address."""
+        """显示地址版本的前缀和hash."""
         addr = wsgiref.util.shift_path_info(page['env'])
         if addr is None:
-            return "Shows ADDRESS's version byte(s) and public key hash" \
-                ' as hex strings separated by colon (":").\n' \
+            return "以十六进制字符串形式显示地址版本字节和公钥，用(‘:’)隔开.\n" \
                 '/q/decode_address/ADDRESS\n'
         # XXX error check?
         version, hash = util.decode_address(addr)
@@ -1600,23 +1600,22 @@ class Abe:
         return ret
 
     def q_addresstohash(abe, page, chain):
-        """shows the public key hash encoded in an address."""
+        """显示地址的公钥hash."""
         addr = wsgiref.util.shift_path_info(page['env'])
         if addr is None:
-            return 'Shows the 160-bit hash encoded in ADDRESS.\n' \
-                'For BBE compatibility, the address is not checked for' \
-                ' validity.  See also /q/decode_address.\n' \
+            return '显示地址的160-bit hash，为了兼容BBE，地址没有做有效性检查.\n' \
+                '参见 /q/decode_address.\n' \
                 '/q/addresstohash/ADDRESS\n'
         version, hash = util.decode_address(addr)
         return hash.encode('hex').upper()
 
     def q_hashtoaddress(abe, page, chain):
-        """shows the address with the given version prefix and hash."""
+        """将地址版本前缀和hash转换为地址."""
         arg1 = wsgiref.util.shift_path_info(page['env'])
         arg2 = wsgiref.util.shift_path_info(page['env'])
         if arg1 is None:
             return \
-                'Converts a 160-bit hash and address version to an address.\n' \
+                '将 160-bit hash和地址版本前缀转换为地址.\n' \
                 '/q/hashtoaddress/HASH[/VERSION]\n'
 
         if page['env']['PATH_INFO']:
@@ -1645,16 +1644,11 @@ class Abe:
         return util.hash_to_address(version, hash)
 
     def q_hashpubkey(abe, page, chain):
-        """shows the 160-bit hash of the given public key."""
+        """显示给定公钥的160-bit的hash."""
         pubkey = wsgiref.util.shift_path_info(page['env'])
         if pubkey is None:
             return \
-                "Returns the 160-bit hash of PUBKEY.\n" \
-                "For example, the Bitcoin genesis block's output public key," \
-                " seen in its transaction output scriptPubKey, starts with\n" \
-                "04678afdb0fe..., and its hash is" \
-                " 62E907B15CBF27D5425399EBF6F0FB50EBB88F18, corresponding" \
-                " to address 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa.\n" \
+                "返回 PUBKEY 的160-bit的hash.\n" \
                 "/q/hashpubkey/PUBKEY\n"
         try:
             pubkey = pubkey.decode('hex')
@@ -1663,13 +1657,12 @@ class Abe:
         return util.pubkey_to_hash(pubkey).encode('hex').upper()
 
     def q_checkaddress(abe, page, chain):
-        """checks an address for validity."""
+        """检查地址的有效性."""
         addr = wsgiref.util.shift_path_info(page['env'])
         if addr is None:
             return \
-                "Returns the version encoded in ADDRESS as a hex string.\n" \
-                "If ADDRESS is invalid, returns either X5, SZ, or CK for" \
-                " BBE compatibility.\n" \
+                "返回地址版本的十六进制字符串.\n" \
+                "如果地址无效, 为兼容BBE，返回 X5, SZ, 或者 CK.\n" \
                 "/q/checkaddress/ADDRESS\n"
         if util.possible_address(addr):
             version, hash = util.decode_address(addr)
@@ -1681,9 +1674,9 @@ class Abe:
         return 'SZ'
 
     def q_hashrate(abe, page, chain):
-        """shows average network hashrate over last N blocks (in hashes per second, default N=1440 [approx. one day])"""
+        """显示最近 N 个区块的全网算力平均值(单位hashes/s，默认 N=1440[约为一天的数量])."""
         if chain is None:
-            return 'Shows hashrate over N last blocks (in hashes per second, default N=1440 [approx. one day]).\n' \
+            return '显示最近 N 个区块的全网算力平均值 (单位hashes/s，默认 N=1440[约为一天的数量).\n' \
                 '/chain/CHAIN/q/hashrate[/N]\n'
         interval = path_info_int(page, 1440)
         start = 0 - interval
@@ -1719,7 +1712,7 @@ class Abe:
 
         rows = abe.store.selectall("""
             SELECT b.block_height,
-                   b.block_nTime,
+                   (b.block_nTime+28800),
                    b.block_chain_work,
                    b.block_nBits
               FROM block b
@@ -1764,11 +1757,11 @@ class Abe:
         return ret
 
     def q_nethash(abe, page, chain):
-        """shows statistics about difficulty and network power."""
+        """显示全网算力和难度的统计信息."""
         #chain = None
         if chain is None:
-            return 'Shows statistics every INTERVAL blocks.\n' \
-                'Negative values count back from the last block.\n' \
+            return '每 INTERVAL 个区块显示一次统计信息.\n' \
+                '负数表示从最后一个区块往前.\n' \
                 '/chain/CHAIN/q/nethash[/INTERVAL[/START[/STOP]]]\n'
         interval = path_info_int(page, 144)
         start = path_info_int(page, 0)
@@ -1807,7 +1800,7 @@ class Abe:
 
         rows = abe.store.selectall("""
             SELECT b.block_height,
-                   b.block_nTime,
+                   (b.block_nTime+28800),
                    b.block_chain_work,
                    b.block_nBits
               FROM block b
@@ -1855,14 +1848,9 @@ class Abe:
         return ret
 
     def q_totalbc(abe, page, chain):
-        """shows the amount of currency ever mined."""
+        """显示全网发行币总量."""
         if chain is None:
-            return 'Shows the amount of currency ever mined.\n' \
-                'This differs from the amount in circulation when' \
-                ' coins are destroyed, as happens frequently in Namecoin.\n' \
-                'Unlike http://blockexplorer.com/q/totalbc, this does not' \
-                ' support future block numbers, and it returns a sum of' \
-                ' observed generations rather than a calculated value.\n' \
+            return '显示全网发行币总量.\n' \
                 '/chain/CHAIN/q/totalbc[/HEIGHT]\n'
         height = path_info_uint(page, None)
         if height is None:
@@ -1886,9 +1874,9 @@ class Abe:
         return format_satoshis(row[0], chain) if row else 0
 
     def q_getusedaddrcount(abe, page, chain):
-	"""getusedaddrcount"""
+	"""获取使用的地址总数"""
 	if chain is None:
-		return 'returns number of unique addresses used on the network (sending or receiving)\n' \
+		return '获取全网使用的地址总数(包括发送和接收)\n' \
 			'/chain/CHAIN/q/getusedaddrcount\n'
 	sql = """SELECT COUNT(pubkey.pubkey_id) FROM pubkey"""
 	row = abe.store.selectrow(sql)
@@ -1896,9 +1884,9 @@ class Abe:
 	return ret
 
     def q_gettop100receivingaddresses(abe, page, chain):
-	"""gettop100receivingaddresses"""
+	"""获取接收地址top100"""
 	if chain is None:
-		return 'returns top 100 addresses by amount of coins received\n' \
+		return '返回接收地址top100\n' \
 			'/chan/CHAIN/q/gettop100receivingaddresses\n'
 	sql = """SELECT pubkey_hash, SUM(txout_value) AS SatoshisReceived FROM txout_detail WHERE in_longest=1 AND pubkey_hash IS NOT NULL GROUP BY pubkey_hash ORDER BY SatoshisReceived DESC LIMIT 100;"""
 	rows = abe.store.selectall(sql)
@@ -1914,9 +1902,9 @@ class Abe:
 	return ret
 
     def q_gettop100sendingaddresses(abe, page, chain):
-	"""gettop100sendingaddresses"""
+	"""获取发送地址top100"""
 	if chain is None:
-		return 'returns top 100 addresses by amount of coins sent\n' \
+		return '返回发送地址top100\n' \
 			'/chan/CHAIN/q/gettop100sendingaddresses\n'
 	sql = """SELECT pubkey_hash, SUM(txin_value) AS SatoshisSent FROM txin_detail WHERE in_longest=1 AND prevout_id IS NOT NULL GROUP BY pubkey_hash ORDER BY SatoshisSent DESC LIMIT 100;
 """
@@ -1932,52 +1920,58 @@ class Abe:
 			return "ERROR: invalid hash\n"
 	return ret
 
-#    def q_gettop100balances(abe, page, chain):
-#	"""gettop100balances"""
-#	if chain is None:
-#		return 'returns top 100 addresses by balance\n' \
-#			'/chain/CHAIN/q/gettop100balances\n'
-#	sql = """SELECT pubkey_hash FROM pubkey;"""
-#	rows = abe.store.selectall(sql)
-#	version = chain['address_version']
-#	ret = "addr,balance\n"
-#	for row in rows:
-#		pubkey_hash = row[0]
-#		sql = """
-#	            SELECT COALESCE(SUM(txout.txout_value), 0)
-#	              FROM pubkey
-#	              JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
-#	              JOIN block_tx ON block_tx.tx_id=txout.tx_id
-#	              JOIN block b ON b.block_id=block_tx.block_id
-#	              JOIN chain_candidate cc ON cc.block_id=b.block_id
-#	              WHERE
-#	                  pubkey.pubkey_hash = ? AND
-#	                  cc.chain_id = ? AND
-#	                  cc.in_longest = 1"""
-#		total_received = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
-#		sql = """
-#	            SELECT COALESCE(SUM(txout.txout_value), 0)
-#	              FROM pubkey
-#	              JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
-#	              JOIN txin ON txin.txout_id=txout.txout_id
-#	              JOIN block_tx ON block_tx.tx_id=txout.tx_id
-#	              JOIN block b ON b.block_id=block_tx.block_id
-#	              JOIN chain_candidate cc ON cc.block_id=b.block_id
-#	              WHERE
-#	                  pubkey.pubkey_hash = ? AND
-#	                  cc.chain_id = ? AND
-#	                  cc.in_longest = 1"""
-#		total_sent = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
-#		final_balance = total_received[0] - total_sent[0]
-#		#hash = pubkey_hash.decode('hex')
-#		ret += "%s,%.8f\n" % (util.hash_to_address(version, pubkey_hash), final_balance)
-#	return ret
+    def q_gettop100balances(abe, page, chain):
+	"""获取地址余额top100"""
+	if chain is None:
+		return '返回地址余额top100\n' \
+			'/chain/CHAIN/q/gettop100balances\n'
+	sql = """SELECT pubkey_hash FROM pubkey;"""
+	rows = abe.store.selectall(sql)
+	version = chain['address_version']
+	ret = "addr,balance\n"	
+	result = []
+	for row in rows:
+		pubkey_hash = row[0]
+		sql = """
+	            SELECT COALESCE(SUM(txout.txout_value), 0)
+	              FROM pubkey
+	              JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
+	              JOIN block_tx ON block_tx.tx_id=txout.tx_id
+	              JOIN block b ON b.block_id=block_tx.block_id
+	              JOIN chain_candidate cc ON cc.block_id=b.block_id
+	              WHERE
+	                  pubkey.pubkey_hash = ? AND
+	                  cc.chain_id = ? AND
+	                  cc.in_longest = 1"""
+		total_received = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
+		sql = """
+	            SELECT COALESCE(SUM(txout.txout_value), 0)
+	              FROM pubkey
+	              JOIN txout ON txout.pubkey_id=pubkey.pubkey_id
+	              JOIN txin ON txin.txout_id=txout.txout_id
+	              JOIN block_tx ON block_tx.tx_id=txout.tx_id
+	              JOIN block b ON b.block_id=block_tx.block_id
+	              JOIN chain_candidate cc ON cc.block_id=b.block_id
+	              WHERE
+	                  pubkey.pubkey_hash = ? AND
+	                  cc.chain_id = ? AND
+	                  cc.in_longest = 1"""
+		total_sent = abe.store.selectrow(sql, (pubkey_hash, chain['id']))
+		final_balance = (total_received[0] - total_sent[0]) / 10**6
+		hash = pubkey_hash.decode('hex')		
+		result.append({'address':util.hash_to_address(version, hash),'balance':final_balance})
+		
 
+	sresult = sorted(result,key=lambda x:x['balance'],reverse=True)
+	for i in range(10):	    
+	    ret += "%s,%.8f\n" % (sresult[i]['address'], sresult[i]['balance'])
+	return ret
+	          
     def q_getbalance(abe, page, chain):
-        """getbalance"""
+        """获取余额"""
         addr = wsgiref.util.shift_path_info(page['env'])
         if chain is None or addr is None:
-            return 'returns balance of an address\n' \
+            return '返回一个地址的余额\n' \
                 '/chain/CHAIN/q/getbalance/ADDRESS\n'
 
         if not util.possible_address(addr):
@@ -2018,10 +2012,10 @@ class Abe:
         return str(ret)
 
     def q_getreceivedbyaddress(abe, page, chain):
-        """getreceivedbyaddress"""
+        """获取地址接收的币总量"""
         addr = wsgiref.util.shift_path_info(page['env'])
         if chain is None or addr is None:
-            return 'returns amount of money received by given address (not balance, sends are not subtracted)\n' \
+            return '返回该地址接收的币总量 (并非余额, 并没有见到发送的币总量)\n' \
                 '/chain/CHAIN/q/getreceivedbyaddress/ADDRESS\n'
 
         if not util.possible_address(addr):
@@ -2046,10 +2040,10 @@ class Abe:
         return ret
 
     def q_getsentbyaddress(abe, page, chain):
-        """getsentbyaddress"""
+        """获取发送的币总量"""
         addr = wsgiref.util.shift_path_info(page['env'])
         if chain is None or addr is None:
-            return 'returns amount of money sent from given address\n' \
+            return '返回该地址发送的币总量\n' \
                 '/chain/CHAIN/q/getsentbyaddress/ADDRESS\n'
 
         if not util.possible_address(addr):
@@ -2075,19 +2069,18 @@ class Abe:
         return ret
 
     def q_fb(abe, page, chain):
-        """returns an address's firstbits."""
+        """获取地址的 firstbits."""
 
         if not abe.store.use_firstbits:
             raise PageNotFound()
 
         addr = wsgiref.util.shift_path_info(page['env'])
         if addr is None:
-            return 'Shows ADDRESS\'s firstbits:' \
-                ' the shortest initial substring that uniquely and' \
-                ' case-insensitively distinguishes ADDRESS from all' \
-                ' others first appearing before it or in the same block.\n' \
-                'See http://firstbits.com/.\n' \
-                'Returns empty if ADDRESS has no firstbits.\n' \
+            return '显示 ADDRESS\'s firstbits:' \
+                ' 唯一的、首字母大写的、区分大小写的、最简短的子串\n' \
+                ' 区别于其他首次出现的或在同一个区块内的地址\n' \
+                '参见 http://firstbits.com/.\n' \
+                '如果没有 firstbits，则返回空.\n' \
                 '/chain/CHAIN/q/fb/ADDRESS\n' \
                 '/q/fb/ADDRESS\n'
 
@@ -2106,18 +2099,18 @@ class Abe:
         return ret
 
     def q_addr(abe, page, chain):
-        """returns the full address having the given firstbits."""
+        """返回给定firstbits的地址."""
 
         if not abe.store.use_firstbits:
             raise PageNotFound()
 
         fb = wsgiref.util.shift_path_info(page['env'])
         if fb is None:
-            return 'Shows the address identified by FIRSTBITS:' \
-                ' the first address in CHAIN to start with FIRSTBITS,' \
-                ' where the comparison is case-insensitive.\n' \
-                'See http://firstbits.com/.\n' \
-                'Returns the argument if none matches.\n' \
+            return '返回给定 FIRSTBITS 的地址:' \
+                ' CHAIN 中第一个以FIRSTBITS开头的匹配的地址,' \
+                ' 对比区分大小写.\n' \
+                '参见 http://firstbits.com/.\n' \
+                '如果没有任何匹配，则返回给定参数.\n' \
                 '/chain/CHAIN/q/addr/FIRSTBITS\n' \
                 '/q/addr/FIRSTBITS\n'
 
@@ -2176,7 +2169,7 @@ class Abe:
         else:
             full = base + link
 
-        return ['<p class="shortlink">Short Link: <a href="',
+        return ['<p class="shortlink">短链接: <a href="',
                 page['dotdot'], link, '">', full, '</a></p>\n']
 
 def find_htdocs():

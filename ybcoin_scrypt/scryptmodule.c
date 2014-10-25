@@ -80,6 +80,6 @@ static PyMethodDef ScryptMethods[] = {
     { NULL, NULL, 0, NULL }
 };
 
-PyMODINIT_FUNC inityac_scrypt(void) {
-    (void) Py_InitModule("yac_scrypt", ScryptMethods);
+PyMODINIT_FUNC initybc_scrypt(void) {
+    (void) Py_InitModule("ybc_scrypt", ScryptMethods);
 }

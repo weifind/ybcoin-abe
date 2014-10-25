@@ -1,86 +1,119 @@
 body {
-background:#B9B3AF;
-color:#000;
-margin:0;
-padding:0 0 0 20px
+	background: #e5e9ea;
+	color: #000;
+	margin: 0;
+	padding: 0;
+	font: 14px Verdana, Tahoma, sans-serif;
 }
 
-body,a,td {
-font:15px Verdana,Tahoma,sans-serif
+form p {
+	font-size: 12px;
+	font-style: italic;
+	color: #666;
+	line-height: 20px;
 }
-
-input,button,th {
-font:13px Verdana,Tahoma,sans-serif
-}
-
-button,th {
-font-weight:700
-}
-
-td {
-background:#E1E0DF
-}
-
-td,th {
-border:0;
-padding:2px 4px;
-text-align:left
-}
-
-td a:link,td a:visited {
-color:#275680;
-text-shadow:0 0 0 rgba(0,0,0,0.5)
-}
-
-td a:hover {
-color:#000
-}
-
-td,button,input {
--moz-box-shadow:0 1px 2px rgba(0,0,0,0.5);
--webkit-box-shadow:0 1px 2px rgba(0,0,0,0.5);
-box-shadow:0 1px 2px rgba(0,0,0,0.5)
-}
-
-h1 {
-/*line-height:0;*/
-margin:12px 0 0 0
-}
-
-h1,h1 a:link,h1 a:visited {
-font-size:41px;
-font-weight:500
-}
-
-h1,a,td a:hover,button {
-text-shadow:0 1px 1px rgba(0,0,0,0.5)
-}
-
-a:link,a:visited {
-color:#275680;
-font-weight:700;
-text-decoration:none
-}
-
-a:hover {
-color:#000
-}
-
 input {
-margin:0 0 6px 0;
-padding:0 0 0 4px;
-width:520px
+	-webkit-border-radius: 4px;
+	-moz-border-radius: 4px;
+	border-radius: 4px;
+	background-color: #fff;
+	-webkit-box-shadow: inset 0 1px 3px rgba(0,0,0,.23);
+	-moz-box-shadow: inset 0 1px 3px rgba(0,0,0,.23);
+	box-shadow: inset 0 1px 3px rgba(0,0,0,.23);
+	border: solid 1px #abb9bd;
+	padding: 4px 5px;
+	width: 520px;
+	font-size: 18px;
 }
-
+button{
+	font: 14px Verdana, Tahoma, sans-serif;
+	font-weight: bold;
+}
+table {
+	border-collapse: collapse;
+	margin-top:10px;
+}
+th {
+	background-color: #494949;
+	background-image: -webkit-linear-gradient(bottom, #3a3a3a, #5f5f5f);
+	background-image: -moz-linear-gradient(bottom, #3a3a3a, #5f5f5f);
+	background-image: -o-linear-gradient(bottom, #3a3a3a, #5f5f5f);
+	background-image: -ms-linear-gradient(bottom, #3a3a3a, #5f5f5f);
+	background-image: linear-gradient(to top, #3a3a3a, #5f5f5f);
+	color: #eee;
+	padding: 8px 8px;
+	border: 1px solid #333;
+	font-size:12px;
+}
+td {
+	background: #fff;
+	border: 1px solid #CCC;
+	padding: 6px 8px;
+	text-align: left;
+	text-shadow: 0 1px rgba(255,255,255,.59);
+	font-size:12px;
+}
+td a:link, td a:visited {
+	color: #009e61;
+	text-shadow: 0 0 0 rgba(0,0,0,0.5)
+}
+td a:hover {
+	color: #04d243
+}
+h1 {
+	border-bottom: solid 1px #56726a;
+	background-image: -webkit-linear-gradient(bottom, #829e95, #8cb4a7);
+	background-image: -moz-linear-gradient(bottom, #829e95, #8cb4a7);
+	background-image: -o-linear-gradient(bottom, #829e95, #8cb4a7);
+	background-image: -ms-linear-gradient(bottom, #829e95, #8cb4a7);
+	background-image: linear-gradient(to top, #829e95, #8cb4a7);
+	background-color: #85a59b;
+	margin: 0 0 10px 0;
+	padding: 20px 20px 10px 20px;
+}
+h1, h1 a:link, h1 a:visited {
+	font-size: 36px;
+	color: #000;
+	text-shadow: 0 1px rgba(255,255,255,.59);
+	font-weight: normal;
+}
+h1 img {
+	vertical-align: bottom;
+}
+p, table, ul, h2, h3, h4 {
+	margin-left: 20px;
+	text-shadow: 0 1px rgba(255,255,255,.59);
+}
+li{
+	line-height:24px;
+	padding-left:0px;
+}
+li table{
+	margin:0;
+}
+a:link, a:visited {
+	color: #009e61;
+	text-decoration: underline;
+}
+a:hover {
+	color: #04d243
+}
 button {
-background:#275680;
-color:#FFF;
-cursor:pointer;
-margin:2px 0 0 5px;
-padding:2px 4px 5px 4px
-}
-
-input,button {
-border:0;
-height:24px
+	color: #fff;
+	cursor: pointer;
+	margin: 1px 0 0 5px;
+	-webkit-border-radius: 4px;
+	-moz-border-radius: 4px;
+	border-radius: 4px;
+	background-color: #0266ba;
+	-webkit-box-shadow: 0 1px 2px rgba(0,0,0,.5), inset 0 1px rgba(255,255,255,.42);
+	-moz-box-shadow: 0 1px 2px rgba(0,0,0,.5), inset 0 1px rgba(255,255,255,.42);
+	box-shadow: 0 1px 2px rgba(0,0,0,.5), inset 0 1px rgba(255,255,255,.42);
+	border: solid 1px #00344f;
+	background-image: -webkit-linear-gradient(bottom, #005da4, #0473db);
+	background-image: -moz-linear-gradient(bottom, #005da4, #0473db);
+	background-image: -o-linear-gradient(bottom, #005da4, #0473db);
+	background-image: -ms-linear-gradient(bottom, #005da4, #0473db);
+	background-image: linear-gradient(to top, #005da4, #0473db);
+	padding: 4px 10px;
 }
