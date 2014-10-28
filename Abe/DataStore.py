@@ -2639,10 +2639,9 @@ store._ddl['txout_approx'],
     def blkfile_name(store, dircfg, number=None):
         if number is None:
             number = dircfg['blkfile_number']
-        if number > 9999:
-            return os.path.join(dircfg['dirname'], "blocks", "blk-v1-%05d.dat"
-                                % (number - 100000,))
-        return os.path.join(dircfg['dirname'], "blk-v1-%04d.dat" % (number,))
+        #if number > 9999:
+        #    return os.path.join(dircfg['dirname'], "blocks", "blk-v1-%05d.dat" % (number - 100000,))
+        return os.path.join(dircfg['dirname'], "blk-v1-0001.dat")
 
     def save_blkfile_offset(store, dircfg, offset):
         store.sql("""
