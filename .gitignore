@@ -4,4 +4,4 @@ tmpd
 MANIFEST
 build
 dist
-abe.conf
+*.conf
