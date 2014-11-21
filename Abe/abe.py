@@ -120,7 +120,7 @@ MAX_UNSPENT_ADDRESSES = 200
 
 def make_store(args):
     store = DataStore.new(args)
-    store.catch_up()
+    #store.catch_up()
     return store
 
 class NoSuchChainError(Exception):
@@ -2406,10 +2406,14 @@ See abe.conf for commented examples.""")
             % (argv[0],))
         return 1
 
+    """
     logging.basicConfig(
         stream=sys.stdout,
         level=logging.DEBUG,
         format=DEFAULT_LOG_FORMAT)
+        """
+    LOG_FILENAME = '/tmp/python_debug.log'
+    logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG)
     if args.logging is not None:
         import logging.config as logging_config
         logging_config.dictConfig(args.logging)
@@ -2417,7 +2421,9 @@ See abe.conf for commented examples.""")
     if args.auto_agpl:
         import tarfile
 
+    logging.debug('start')
     store = make_store(args)
+    logging.debug('end')
     if (not args.no_serve):
         serve(store)
     return 0
