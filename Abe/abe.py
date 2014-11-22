@@ -51,7 +51,6 @@ DONATIONS_YBC = 'YTU8JJidCcHtJpYMGPK2eL6zGBVKwd2Jit'
 # Abe-generated content should all be valid HTML and XHTML fragments.
 # Configurable templates may contain either.  HTML seems better supported
 # under Internet Explorer.
-# <p><a href="/static/graphs.htm">Ybcoin 统计数据</a></p>
 DEFAULT_CONTENT_TYPE = "text/html; charset=utf-8"
 DEFAULT_TEMPLATE = """
 <!DOCTYPE html>
@@ -69,6 +68,7 @@ DEFAULT_TEMPLATE = """
     </h1>
     %(body)s
     <p><a href="%(dotdot)sq">API</a> 机读格式</p>
+    <p><a href="/static/graphs.htm">Ybcoin 统计数据</a></p>
     <p style="font-size: smaller">
         <span style="font-style: italic">
             由 <a href="%(ABE_URL)s">Ybcoin-abe</a> 提供技术支持
@@ -77,7 +77,6 @@ DEFAULT_TEMPLATE = """
         , 需要您的捐助
         <!-- <a href="%(dotdot)saddress/%(DONATIONS_BTC)s">BTC</a> -->
         <a href="%(dotdot)saddress/%(DONATIONS_YBC)s">YBC</a>
-    	<script src="http://s11.cnzz.com/stat.php?id=5570768&web_id=5570768&show=pic1" language="JavaScript"></script>
     </p>
 </body>
 </html>
@@ -214,7 +213,7 @@ class Abe:
             page["body"] = ['<p class="error">Sorry, ', env['SCRIPT_NAME'],
                             env['PATH_INFO'],
                             ' does not exist on this server.</p>']
-        except NoSuchChainError, e:
+        except NoSuchChainError as e:
             page['body'] += [
                 '<p class="error">'
                 'Sorry, I don\'t know about that chain!</p>\n']
@@ -903,7 +902,7 @@ class Abe:
             if chain is None:
                 chain = abe.chain_lookup_by_name(name)
                 is_coinbase = (tx_pos == 0)
-            elif name <> chain['name']:
+            elif name != chain['name']:
                 abe.log.warn('Transaction ' + tx_hash + ' in multiple chains: '
                              + name + ', ' + chain['name'])
             body += [
@@ -1963,7 +1962,7 @@ class Abe:
 		
 
 	sresult = sorted(result,key=lambda x:x['balance'],reverse=True)
-	for i in range(10):	    
+	for i in range(100):	    
 	    ret += "%s,%.8f\n" % (sresult[i]['address'], sresult[i]['balance'])
 	return ret
 	          
@@ -2406,14 +2405,10 @@ See abe.conf for commented examples.""")
             % (argv[0],))
         return 1
 
-    """
     logging.basicConfig(
         stream=sys.stdout,
         level=logging.DEBUG,
         format=DEFAULT_LOG_FORMAT)
-        """
-    LOG_FILENAME = '/tmp/python_debug.log'
-    logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG)
     if args.logging is not None:
         import logging.config as logging_config
         logging_config.dictConfig(args.logging)
@@ -2421,9 +2416,7 @@ See abe.conf for commented examples.""")
     if args.auto_agpl:
         import tarfile
 
-    logging.debug('start')
     store = make_store(args)
-    logging.debug('end')
     if (not args.no_serve):
         serve(store)
     return 0
