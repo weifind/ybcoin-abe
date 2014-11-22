@@ -120,7 +120,7 @@ MAX_UNSPENT_ADDRESSES = 200
 
 def make_store(args):
     store = DataStore.new(args)
-    #store.catch_up()
+    store.catch_up()
     return store
 
 class NoSuchChainError(Exception):
