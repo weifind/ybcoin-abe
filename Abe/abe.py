@@ -68,7 +68,6 @@ DEFAULT_TEMPLATE = """
     </h1>
     %(body)s
     <p><a href="%(dotdot)sq">API</a> 机读格式</p>
-    <p><a href="/static/graphs.htm">Ybcoin 统计数据</a></p>
     <p style="font-size: smaller">
         <span style="font-style: italic">
             由 <a href="%(ABE_URL)s">Ybcoin-abe</a> 提供技术支持
