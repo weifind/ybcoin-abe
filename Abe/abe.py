@@ -1847,6 +1847,7 @@ class Abe:
         return ret
 
     def q_totalbc(abe, page, chain):
+        return 3000000
         """显示全网发行币总量."""
         if chain is None:
             return '显示全网发行币总量.\n' \
